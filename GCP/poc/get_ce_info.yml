@@ -1,0 +1,37 @@
+---
+
+#################################################################
+
+- name: Getting information about infrastructure
+  hosts: all
+  connection: local
+  gather_facts: true
+
+  vars_files:
+    - vars.yml
+
+  tasks:
+
+     - debug:
+         var: ansible_facts
+
+#    - name: get info on an instance
+#      #loop: "{{ gcp_zones }}"
+#      register: ce_info
+#      google.cloud.gcp_compute_instance:
+#        auth_kind: "{{ gcp_cred_kind }}"
+#        project: "{{ gcp_project }}"
+#        name: crdb
+#        service_account_file: "{{ gcp_service_account_file }}"
+#        zone: us-west2-a
+#        #zone: "{{ item }}"
+#
+#    - name: Set subnets facts
+#      with_items: "{{ subnet_info.subnets }}"
+#      set_fact:
+#         subnets: "{{ subnets|default([]) + [ {'subnet_id': item.id} ] }}"
+
+#    - name: Display ce facts
+#      debug:
+#        msg: "{{ ce_info.networkInterfaces[0].networkIP }}"
+#

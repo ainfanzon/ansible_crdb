@@ -1,0 +1,24 @@
+---
+
+#################################################################
+# This file is imported in the cr_crdb_infra.yml. It groups the creation of a disk
+# and use the disk in the compute engine creation. This enables iterating these tasks
+# in the cr_crdb_infra.yml playbook.
+
+#################################################################
+# This task creates a disk that will be attached to the compute engine
+
+# Initialize a couter for giving a unique name to the disk and compute engine
+
+- name: Incrementing counter
+  set_fact:
+    counter: "{{ counter | default(0) | int + 1 }}"
+
+- name: Decommissioning compute engine  "{{ gcp_machine_name }}-{{ counter }}"
+  google.cloud.gcp_compute_instance:
+    name: "{{ gcp_machine_name }}-{{ counter }}"
+    state: absent
+    zone: "{{ item }}"
+    project: "{{ gcp_project }}"
+    auth_kind: "{{ gcp_cred_kind }}"
+    service_account_file: "{{ gcp_service_account_file }}"

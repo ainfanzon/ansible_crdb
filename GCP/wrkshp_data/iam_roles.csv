@@ -1,0 +1,7 @@
+1,Admin/Super Admin,"This user role is responsible for setting up and configuring the IAM application, managing user roles and permissions, and overseeing overall security measures."
+2,User Manager,"This user role is responsible for creating and managing user accounts, assigning user roles and permissions, and monitoring user activity."
+3,Group Manager,"This user role is responsible for creating and managing user groups, assigning group permissions, and organizing users into logical groups for easier management."
+4,Auditor,"This user role is responsible for monitoring and reviewing user activity, generating reports and audits, and ensuring compliance with security policies and regulations."
+5,Helpdesk Support,"This user role is responsible for providing technical support to users, troubleshooting access issues, and assisting with password resets and account lockouts."
+6,Developer,"This user role is responsible for integrating applications and systems with the IAM application, developing customizations and extensions, and ensuring seamless operation of all interconnected systems."
+7,External User,"This user role is assigned to users outside of the organization, such as partners, vendors, or contractors, who require limited access to certain resources or applications within the IAM system. "

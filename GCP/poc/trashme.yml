@@ -1,0 +1,30 @@
+---
+
+- name: Test Users
+  hosts: localhost
+  gather_facts: true
+  remote_user: ainfanzon           # use the uid in the ssh public key file
+
+  # Import variables in the vars.yml file to customize the deployment
+  vars_files:
+    - vars.yml
+
+
+  tasks:
+
+    # Gather subnet facts to be used later in the playbook
+    #- name: Set subnets fact
+    #  set_fact:
+    #     uids: "{{ uids|default([]) + [ {'uid': item} ] }}"
+    #  with_items: "{{ crdb_uids }}"
+
+    - name: Read JSON data from a variable
+      set_fact:
+        my_json_data: "{{ crdb_uids }}"
+
+    - name: Display variable
+      debug: 
+        msg: 
+         - "{{ item.home }}"
+         - "{{ item.uid }}"
+      loop: "{{  my_json_data }}"

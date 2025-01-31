@@ -1,0 +1,52 @@
+---
+
+# dply_crdb_infra.yml ###################
+#
+# This script launches the CRDB infrasturcture on GCP Compute Engines
+#
+
+crdb_sql_strt_port: 26257
+crdb_http_strt_port: 8080
+crdb_dwnload_url: https://binaries.cockroachdb.com/
+
+#crdb_version: cockroach-v24.2.3.linux-amd64
+crdb_version: cockroach-v23.2.17.linux-amd64
+crdb_curl_ver: v23.2
+crdb_uid: roachie
+crdb_uids: [{ "uid": roachie, "home": /home/cockroach}, {"uid": cockroach, "home": /var/lib/cockroach }]
+crdb_grp: users
+crdb_pwd: roachfan
+crdb_home: /home/cockroach
+crdb_service: /var/lib/cockroach
+crdb_dirs: ['data', 'dump', 'scripts','sql']
+
+gcp_cred_kind: serviceaccount
+gcp_disk_name: crdb-disk
+gcp_disk_size: 380
+gcp_disk_type: local-ssd 
+gcp_firewall_rule1: aim-poc-firewall
+gcp_firewall_rule2: aim-allow-internal
+gcp_firewall_rule3: aim-allow-ssh
+gcp_firewall_rule4: aim-allow-icmp
+gcp_machine_name: crdb
+gcp_machine_type: n2d-standard-4
+gcp_subnet_cidr_block: ['10.0.0.0/20', '10.0.16.0/20', '10.0.32.0/20']
+gcp_network_name: aim-poc-network
+gcp_network_subnet_name: aim-poc-subnet
+#gcp_number_of_instances: 3
+gcp_project: aim-ansible-crdb
+gcp_region: us-west2
+gcp_source_image: projects/centos-cloud/global/images/centos-stream-9-v20240919
+gcp_zone: us-west2-a
+gcp_service_account_file: /Users/ainfanzon/ansible/GCP/aim-ansible-crdb-98fe6b9e7f21.json
+gcp_subnet_cidr: "10.0.1.0/24"
+gcp_zones: ['us-west2-a', 'us-west2-b', 'us-west2-c']
+gcp_number_of_instances: 20
+
+sql_scrpt_dir: /Users/ainfanzon/ansible/sql_scrpts
+os_scrpt_dir: /Users/ainfanzon/ansible/scripts
+os_data_dir: /Users/ainfanzon/ansible/wrkshp_data
+pip_package_requirements: ['requests', 'google-auth', 'google-auth-httplib2', 'google-auth-oauthlib', 'google-cloud']
+counter: 0
+jupyterlab_port: 9999
+src_dir: /Users/Shared/schemas

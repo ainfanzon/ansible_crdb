@@ -1,0 +1,82 @@
+---
+
+#################################################################
+# Install CRDB
+
+
+- name: Cockroach Database Installation
+  hosts: all
+  gather_facts: true
+  remote_user: ainfanzon
+
+  vars_files:
+    - vars.yml
+
+  tasks:
+
+    - name: upgrade all packages
+      become: true 
+      dnf:
+        name: "*"
+        state: latest
+
+#    - name: Ensure cockroach group exists
+#      become: true 
+#      group:
+#        name: "{{ crdb_grp }}"
+#        state: present
+
+#    - name: Create a new user
+#      become: true 
+#      user:
+#        name: "{{ crdb_uid }}"
+#        append: true
+#        password: "{{ crdb_pwd | password_hash('sha512') }}" 
+#        shell: /bin/bash
+#        groups: "{{ crdb_grp }}"
+#        create_home: yes
+#        state: present
+
+#    - name: Add user to sudo group
+#      become: true 
+#      user:
+#        name: "{{ crdb_uid }}"
+#        groups: wheel
+#        append: yes
+
+    - name: Unarchive a CRDB tar file 
+#      become: true 
+      ansible.builtin.unarchive:
+        src: "{{ crdb_dwnload_url }}{{crdb_version}}.tgz"
+        dest: /tmp
+        remote_src: yes
+
+    - name: Create a directory for the CRDB libraries
+      become: true 
+      ansible.builtin.file:
+        path: /usr/local/lib/cockroach
+        state: directory
+        mode: '0755'
+
+    - name: Create a data directory for the CRDB
+#      become: true 
+      ansible.builtin.file:
+        path: /home/cockroach/data
+        state: directory
+        mode: '0666'
+
+    - name: Copy cockroach binary to /usr/local/bin
+      become: true 
+      ansible.builtin.copy:
+        src: "/tmp/{{ crdb_version }}/cockroach"
+        dest: /usr/local/bin
+        mode: '0755'
+        remote_src: yes
+
+    - name: Copy cockroach libraries to /usr/local/lib
+      become: true 
+      ansible.builtin.copy:
+        src: "/tmp/{{ crdb_version }}/lib/"
+        dest: /usr/local/lib/cockroach
+        remote_src: yes
+

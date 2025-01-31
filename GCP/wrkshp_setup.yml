@@ -1,0 +1,157 @@
+---
+
+#################################################################
+# Install CRDB, anaconda
+
+- name: Cockroach database and other tools installation
+  hosts: all
+  gather_facts: true
+  remote_user: ainfanzon           # use the uid in the ssh public key file
+
+  vars_files:
+    - vars.yml
+
+  tasks:
+
+    - name: Upgrading all packages
+      become: true 
+      dnf:
+        name: "*"
+        state: latest
+      tags:
+        - upgrd_pks
+  
+    - name: Installing EPEL repository (if necessary)
+      become: true 
+      yum: 
+        name: "epel-release"
+        state: present 
+      tags:
+        - inst_repo      
+
+    - name: Installing additional packages
+      become: true 
+      dnf:
+        name:
+          - wget
+          - bzip2
+          - python-pip
+          - nodejs
+        state: latest
+      tags:
+        - add_pks
+
+    - name: Unarchiving the CRDB tar file 
+      ansible.builtin.unarchive:
+        src: "{{ crdb_dwnload_url }}{{crdb_version}}.tgz"
+        dest: /tmp
+        remote_src: yes
+
+    - name: Creating a  directory for the CRDB libraries
+      become: true 
+      ansible.builtin.file:
+        path: /usr/local/lib/cockroach
+        state: directory
+        mode: '0755'
+
+    - name: Coping cockroach libraries to /usr/local/lib
+      become: true 
+      ansible.builtin.copy:
+        src: "/tmp/{{ crdb_version }}/lib/"
+        dest: /usr/local/lib/cockroach
+        remote_src: yes
+
+    - name: Coping cockroach binary to /usr/local/bin
+      become: true 
+      ansible.builtin.copy:
+        src: "/tmp/{{ crdb_version }}/cockroach"
+        dest: /usr/local/bin
+        mode: '0755'
+        remote_src: yes
+
+    - name: Creating the "{{ crdb_grp }}" group
+      become: true 
+      ansible.builtin.group:
+        name: "{{ crdb_grp }}"
+        state: present
+      tags:
+        - crch_usr
+
+    - name: Creating the "{{ crdb_uid }}" user
+      become: true 
+      ansible.builtin.user:
+        group: "{{ crdb_grp }}"
+        home: "{{ crdb_home }}"
+        name: "{{ crdb_uid }}"
+        password: "{{ crdb_pwd | password_hash('sha512','A512') }}"
+        shell: /bin/bash
+        state: present
+      tags:
+        - crch_usr
+
+    - name: Creating the home directory for CRDB
+      become: true 
+      ansible.builtin.file:
+        group: "{{ crdb_grp }}"
+        mode: '0777'
+        owner: "{{ crdb_uid }}"
+        path: "{{ crdb_home }}"
+        state: directory
+      tags:
+        - crch_usr
+
+    - name: Creating cockroach subdirs
+      become: true 
+      ansible.builtin.file:
+        group: "{{ crdb_grp }}"
+        mode: '0777'
+        owner: "{{ crdb_uid }}"
+        path: "{{ crdb_home }}/{{ item }}"
+        state: directory
+      loop: "{{ crdb_dirs }}"
+      tags:
+        - crdb_home
+
+    - name: Copying SQL scripts
+      become: true
+      ansible.builtin.copy:
+        dest: "{{ crdb_home }}/sql"
+        group: "{{ crdb_grp }}"
+        owner: "{{ crdb_uid }}"
+        src: "{{ item }}"                  # Can I change this to github repo?
+        mode: '0755'
+      with_fileglob: "{{ sql_scrpt_dir }}/*"
+      tags:
+        - sql_scrpts
+
+    - name: Copying Shell scripts
+      become: true
+      ansible.builtin.copy:
+        dest: "{{ crdb_home }}/scripts"
+        group: "{{ crdb_grp }}"
+        owner: "{{ crdb_uid }}"
+        src: "{{ item }}"                  # Can I change this to github repo?
+        mode: '0755'
+      with_fileglob: "{{ os_scrpt_dir }}/*"
+      tags:
+        - os_scrpts
+
+    - name: Copying all data files
+      become: true 
+      ansible.builtin.copy:
+        dest: "{{ crdb_home }}/dump"
+        group: "{{ crdb_grp }}"
+        owner: "{{ crdb_uid }}"
+        mode: '0755'
+        src: "{{ item }}"
+      with_fileglob: "wrkshp_data/*"
+      tags:
+        - move_data
+    
+    - name: Deleting CRDB installer content & directory
+      become: true 
+      ansible.builtin.file:
+        path: "/tmp/{{ crdb_version }}"
+        state: absent
+      tags:
+        - cleanupCRDB

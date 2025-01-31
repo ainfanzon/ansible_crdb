@@ -1,0 +1,16 @@
+1,View Personal Information,Allows users to view their own personal information stored in the system.
+2,Edit Personal Information,Allows users to edit their own personal information stored in the system.
+3,View Group Information,Allows users to view information about groups they are a member of.
+4,Edit Group Information,Allows users to edit information about groups they are a member of.
+5,Add Users to Group,Allows users to add other users to groups they are a member of.
+6,Remove Users from Group,Allows users to remove other users from groups they are a member of.
+7,View User Permissions,Allows users to view what permissions they have in the system.
+8,Edit User Permissions,Allows users to edit their own permissions in the system.
+9,Assign Roles,Allows users to assign roles to other users in the system.
+10,View Role Permissions,Allows users to view the permissions associated with different roles.
+11,Edit Role Permissions,Allows users to edit the permissions associated with different roles.
+12,Manage User Accounts,"Allows users to create, edit, and delete user accounts in the system."
+13,Manage Group Memberships,Allows users to manage their own group memberships.
+14,Audit Log Access,Allows users to view the audit log of all actions taken in the system.
+15,System Configuration,Allows users to configure settings and preferences of the identity management system.
+16,Admin Access,Allows users to access all features and functionalities of the identity management system as an administrator.

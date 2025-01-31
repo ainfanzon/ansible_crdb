@@ -1,0 +1,73 @@
+---
+
+#################################################################
+# This file is imported in the cr_crdb_infra.yml. It groups the creation of a disk
+# and use the disk in the compute engine creation. This enables iterating these tasks
+# in the cr_crdb_infra.yml playbook.
+
+# Initialize a couter for giving a unique name to the disk and compute engine
+
+- name: Incrementing the counter
+  set_fact:
+    counter: "{{ counter | default(0) | int + 1 }}"
+
+# Create a disk for the Compute engine
+
+- name: Creating disk "{{ gcp_disk_name }}-{{ counter }}" for "{{ gcp_machine_name }}-{{ counter }}"
+
+#  - name:  "{{ gcp_disk_name }}-{{ counter }}"
+#  block:
+  register: disk_info
+  google.cloud.gcp_compute_disk:
+    auth_kind: "{{ gcp_cred_kind }}"
+    description: Create a disk for the CRDB compute engine
+    name: "{{ gcp_disk_name }}-{{ counter }}"
+    project: "{{ gcp_project }}"
+    service_account_file: "{{ gcp_service_account_file }}"
+    size_gb: "{{ gcp_disk_size }}"
+    source_image: "{{ gcp_source_image }}"
+    state: present
+    zone: "{{ item }}"
+
+- name: Display "{{ gcp_network_subnet_name }}" details
+  debug:
+    msg: "{{ disk_info }}"
+
+# Create the compute engine instances
+- name: Creating the "{{ gcp_machine_name }}-{{ counter }}" compute engine
+  register: ce_info
+  google.cloud.gcp_compute_instance:
+    auth_kind: "{{ gcp_cred_kind }}"
+    tags:
+      items:
+      - http-server
+      - https-server
+    disks:
+      - auto_delete: true   # removed when the instance is deleted
+        boot: true
+        source: "{{ disk_info }}"
+      - auto_delete: true
+        interface: NVME
+        type: SCRATCH
+        initialize_params:
+          disk_type: local-ssd
+#    hostname: "{{ gcp_machine_name }}-{{ counter }}.cockroachlabs.com"
+    machine_type: "{{ gcp_machine_type }}"
+    name: "{{ gcp_machine_name }}-{{ counter }}"
+    metadata:
+        ssh-keys: "ainfanzon:{{ lookup('file',  '/Users/ainfanzon/.ssh/id_rsa.pub') }}"
+    network_interfaces:
+      - network: "{{ network_info }}"
+        access_configs:
+        - name: External NAT
+          type: ONE_TO_ONE_NAT
+        subnetwork: "{{ subnet_info }}" 
+    project: "{{ gcp_project }}"
+    service_account_file: "{{ gcp_service_account_file }}"
+    state: present
+    zone: "{{ item }}"
+
+- name: Print return information from the previous task
+  ansible.builtin.debug:
+    var: ce_info
+    verbosity: 4

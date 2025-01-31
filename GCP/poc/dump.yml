@@ -1,0 +1,40 @@
+---
+ - name: Dump
+   hosts: all
+   gather_facts: true
+   vars:
+     l: []
+
+   tasks:
+
+     - name: debug
+       register: x
+       debug: 
+         #msg: "Operating system: {{ hostvars[inventory_hostname]['ansible_hostname'] }}, {{ hostvars[inventory_hostname]['ansible_default_ipv4']['address']}}" 
+         msg: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address']}}" 
+
+     - debug:
+         var: x
+
+     - name: first debug
+       set_fact: 
+         x: "{{ x | map(attribute='msg') }}"
+
+# Display the details of subnets in a VPC
+#    - name: Get subnets for the " vpc_reg.vpc.id  }}" VPC
+#      register: subnet_info
+#      amazon.aws.ec2_vpc_subnet_info:
+#        profile: "{{ aws_profile }}"
+#        region: "{{ aws_region }}"
+#        filters:
+#          vpc-id: "{{ vpc_reg.vpc.id }}"
+#
+#    - name: Set subnets facts
+#      with_items: "{{ subnet_info.subnets }}"
+#      set_fact:
+#         subnets: "{{ subnets|default([]) + [ {'subnet_id': item.id} ] }}"
+#
+#    - name: Display subnets fact
+#      debug:
+#        msg: "{{ subnets }}"
+

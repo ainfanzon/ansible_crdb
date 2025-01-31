@@ -1,0 +1,112 @@
+---
+
+####################################################################
+# Create infrastructure components (network, firewall, storage and compute engines)  
+# # needed to deploy a CockroachDB Cluster
+
+- name: Creating the GCP Infrastructure for CRDB
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars_files:
+    - vars.yml
+
+  tasks: 
+  
+  # Creating and configuring the "{{ gcp_service_account_file }}" VPC network
+
+  - name: Creating the "{{ gcp_network_name }}" network
+    google.cloud.gcp_compute_network:
+      auth_kind: "{{ gcp_cred_kind }}"
+      auto_create_subnetworks: false        # created in “custom subnet mode” to explicitly connect subnetwork resources.
+      description: Network used by aim CRDB nodes
+      name: "{{ gcp_network_name }}"
+      project: "{{ gcp_project }}"
+      service_account_file: "{{ gcp_service_account_file }}"
+      state: present
+    register: network
+
+  # Creating a subnet
+
+  - name: Creating the "{{ gcp_network_subnet_name }}" subnet in "{{ gcp_network_name }}"
+    google.cloud.gcp_compute_subnetwork:
+      auth_kind: "{{ gcp_cred_kind }}"
+      description: aim CRDB Subnet
+      ip_cidr_range: "{{ gcp_subnet_cidr }}"  # range of internal addresses owned by this subnetwork
+      name: "{{ gcp_network_subnet_name }}"
+      network: "{{ network }}"
+      project: "{{ gcp_project }}"
+      region: "{{ gcp_region }}"
+      service_account_file: "{{ gcp_service_account_file }}"
+      state: present
+    register: subnet
+
+  # Configure the Network firewall rules
+
+  - name: Configuring the "{{ gcp_firewall_rule1 }}" rules
+    google.cloud.gcp_compute_firewall:
+      allowed:
+        - ip_protocol: 'tcp'
+          ports:
+            - 22
+            - "{{ crdb_sql_strt_port }}-{{ crdb_sql_strt_port + gcp_number_of_instances }}"
+            - "{{ crdb_http_strt_port }}-{{ crdb_http_strt_port + gcp_number_of_instances }}"
+            - "{{ crdb_http_strt_port }}-{{ crdb_http_strt_port + gcp_number_of_instances }}"
+        - ip_protocol: 'icmp'
+      auth_kind: "{{ gcp_cred_kind }}"
+      description: Opening SSH, crdb  SQL and HTTP listening ports
+      log_config:
+        enable: true
+      name: "{{ gcp_firewall_rule1 }}"
+      network: "{{ network }}"
+      project: "{{ gcp_project }}"
+      service_account_file: "{{ gcp_service_account_file }}"
+      state: present
+
+  - name: Configuring the "{{ gcp_firewall_rule2 }}" rules
+    google.cloud.gcp_compute_firewall:
+      allowed:
+        - ip_protocol: 'tcp'
+          ports:
+            - 0-65535
+        - ip_protocol: 'udp'
+          ports:
+            - 0-65535
+        - ip_protocol: 'icmp'
+      auth_kind: "{{ gcp_cred_kind }}"
+      description: Allowing Internal traffic on TCP and UDP ports
+      name: "{{ gcp_firewall_rule2 }}"
+      network: "{{ network }}"
+      priority: 65534
+      project: "{{ gcp_project }}"
+      service_account_file: "{{ gcp_service_account_file }}"
+      state: present
+
+  - name: Configuring the "{{ gcp_firewall_rule3 }}" rules
+    google.cloud.gcp_compute_firewall:
+      allowed:
+        - ip_protocol: 'tcp'
+          ports:
+            - 22
+        - ip_protocol: 'icmp'
+      auth_kind: "{{ gcp_cred_kind }}"
+      description: Allow SSH from anywhere 
+      name: "{{ gcp_firewall_rule3 }}"
+      network: "{{ network }}"
+      priority: 65534
+      project: "{{ gcp_project }}"
+      service_account_file: "{{ gcp_service_account_file }}"
+      source_ranges:
+        - 0.0.0.0/0
+      state: present
+
+  # Launching the Compute Engines
+
+  - name: Launching the compute engines
+    tags:
+      comp_eng
+
+    # cr_ce.yml creates the boot disk and the compute engine
+    include_tasks: "cr_ce.yml"
+    loop: "{{ gcp_zones }}"

@@ -1,0 +1,78 @@
+---
+
+- name: Decommissioning all resouces
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars_files:
+    - vars.yml
+
+  tasks:
+
+#    - name: Decommissioning GCP infrastructure
+#      include_tasks: "rm_ce.yml"
+#      loop: "{{ gcp_zones }}"
+
+    # Gather the network information to decommission
+    - name: Getting Network Info
+      register: network
+      google.cloud.gcp_compute_network_info:
+        auth_kind: "{{ gcp_cred_kind }}"
+        filters:
+          - name = "{{ gcp_network_name }}"
+        project: "{{ gcp_project }}"
+        service_account_file: "{{ gcp_service_account_file }}"
+
+    # Decommissioning firewall rule 1
+    - name: Decommissioning the "{{ gcp_firewall_rule1 }}" firewall rule
+      google.cloud.gcp_compute_firewall:
+        auth_kind: "{{ gcp_cred_kind }}"
+        name: "{{ gcp_firewall_rule1 }}"
+        network: "{{ network }}"
+        project: "{{ gcp_project }}"
+        service_account_file: "{{ gcp_service_account_file }}"
+        state: absent
+
+    # Decommissioning firewall rule 2
+    - name: Decommissioning the "{{ gcp_firewall_rule2 }}" firewall rule
+      google.cloud.gcp_compute_firewall:
+        name: "{{ gcp_firewall_rule2 }}"
+        auth_kind: "{{ gcp_cred_kind }}"
+        network: "{{ network }}"
+        project: "{{ gcp_project }}"
+        service_account_file: "{{ gcp_service_account_file }}"
+        state: absent
+
+    # Decommissioning firewall rule 3
+    - name: Decommissioning the "{{ gcp_firewall_rule3 }}" firewall rule
+      google.cloud.gcp_compute_firewall:
+        name: "{{ gcp_firewall_rule3 }}"
+        auth_kind: "{{ gcp_cred_kind }}"
+        network: "{{ network }}"
+        project: "{{ gcp_project }}"
+        service_account_file: "{{ gcp_service_account_file }}"
+        state: absent
+          #
+    # Decommissioning the subnet
+    - name: Decommissioning the "{{ gcp_network_subnet_name }}" subnet
+      google.cloud.gcp_compute_subnetwork:
+        auth_kind: "{{ gcp_cred_kind }}"
+        ip_cidr_range: "{{ gcp_subnet_cidr }}"
+        name: "{{ gcp_network_subnet_name }}"
+        network: "{{ network }}"
+        project: "{{ gcp_project }}"
+        region: "{{ gcp_region }}"
+        service_account_file: "{{ gcp_service_account_file }}"
+        state: absent
+      register: subnet
+
+    # Decommission the subnet
+    - name: Decommissioning the "{{ gcp_network_name }}" network
+      google.cloud.gcp_compute_network:
+        auth_kind: "{{ gcp_cred_kind }}"
+        name: "{{ gcp_network_name }}"
+        project: "{{ gcp_project }}"
+        service_account_file: "{{ gcp_service_account_file }}"
+        state: absent
+      register: network

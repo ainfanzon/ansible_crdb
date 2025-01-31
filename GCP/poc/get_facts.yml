@@ -1,0 +1,26 @@
+- name: Print Ansible Facts
+  hosts: all
+  gather_facts: yes
+
+
+  vars:
+    l: ''
+
+  tasks:
+
+    - name: build fact
+      set_fact:
+        l: l | join ( "{{ansible_facts['default_ipv4']['address']}}" )
+
+          #
+        #Ol: "{{ l | default('') +  'address' }}"
+        #l: "{{ l | default('') +  ansible_facts['default_ipv4']['address'] }}"
+
+    - debug: var=l
+#
+#    - debug: var=x.msg
+#
+#    - name: Set fact
+#      with_items: x
+#      set_fact:
+#        l: "{{ item.x  }}"

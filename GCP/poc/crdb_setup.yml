@@ -1,0 +1,209 @@
+---
+
+#################################################################
+# This playbook updates the OS and installs CRDB software 
+#
+
+- name: Cockroach database and other tools installation
+  hosts: all
+  gather_facts: true
+  remote_user: ainfanzon           # use the uid in the ssh public key file
+
+  # Import variables in the vars.yml file to customize the deployment
+  vars_files:
+    - vars.yml
+
+  tasks:
+
+    # Upgrade OS packages  (~ 
+    - name: Upgrading all packages
+      become: true 
+      tags:
+        - upgrade_packages
+      dnf:
+        name: "*"
+        state: latest
+  
+    # Install some additional packages 
+    - name: Installing additional packages
+      become: true 
+      tags:
+        - add_packages
+      dnf:
+        name:
+          - wget
+          - bzip2
+          - haproxy
+          - curl
+          - llvm
+          - telnet
+          - python3-pip
+        state: latest
+
+    - name: Install pip requests library
+      with_items: "{{ pip_package_requirements }}"
+      become: true 
+      tags:
+        - pip_libraries
+      pip:
+        name: "{{ item }}"
+        state: present
+
+    # Download and decompress the CRDB tar file (~1.19s user)
+    - name: Downloading and Unarchiving the CRDB tar file 
+      tags:
+        - download_crdb
+      ansible.builtin.unarchive:
+        src: "{{ crdb_dwnload_url }}{{crdb_version}}.tgz"
+        dest: /tmp
+        remote_src: yes
+
+    # Copy CRDB binary to /usr/local/bin (~0.82s user)
+    - name: Coping cockroach binary to /usr/local/bin
+      become: true 
+      ansible.builtin.copy:
+        src: "/tmp/{{ crdb_version }}/cockroach"
+        dest: /usr/local/bin
+        mode: '0755'
+        remote_src: yes
+      tags:
+        - move_binary
+
+    # Create the directory where the external libraries will be stored (~0.78s user)
+    - name: Creating /usr/local/lib/cockroach directory for the libraries
+      become: true 
+      tags:
+        - create_lib_dir
+      ansible.builtin.file:
+        path: /usr/local/lib/cockroach
+        state: directory
+        mode: '0755'
+
+    # Move library files to /usr/local/lib (~0.81s user)
+    - name: Copying cockroach libraries to /usr/local/lib
+      become: true 
+      tags:
+        - move_libraries
+      ansible.builtin.copy:
+        src: "/tmp/{{ crdb_version }}/lib/"
+        dest: /usr/local/lib/cockroach
+        remote_src: yes
+
+    # This task creates a set of facts about user ids and home directories
+    - name: Read JSON data from a variable
+      tags:
+        - set_facts
+      set_fact:
+        users_json: "{{ crdb_uids }}"
+
+    # This task creates the users defined in the crdb_uids variable (~0.80s user)
+    - name: Creating the "{{ crdb_uids }}" users
+      become: true 
+      loop: "{{ users_json }}"
+      tags:
+        - create_users
+      ansible.builtin.user:
+        group: "{{ crdb_grp }}"
+        home: "{{ item.home }}"
+        name: "{{ item.uid }}"
+        password: "{{ crdb_pwd | password_hash('sha512') }}"
+        shell: /bin/bash
+        state: present
+
+    # This task creates the home directory for the CRDB users (~0.80s user)
+    - name: Creating the directories for CRDB
+      become: true
+      loop: "{{ users_json }}"
+      tags:
+        - crdb_home_dir
+      ansible.builtin.file:
+        group: "{{ crdb_grp }}"
+        mode: '0766'
+        owner: "{{ item.uid }}"
+        path: "{{ item.home }}"
+        state: directory
+
+    # This task creates an additional directory structure for the CRDB user
+    - name: Creating cockroach subdirs
+      become: true 
+      loop: "{{ crdb_dirs }}"
+      tags:
+        - crdb_subdirs
+      ansible.builtin.file:
+        group: "{{ crdb_grp }}"
+        mode: '0755'
+        owner: "{{ crdb_uid }}"
+        path: "{{ crdb_home }}/{{ item }}"
+        state: directory
+
+    # This task modifies the sshd configuration to allow users remote login
+    # TODO: add more than one user
+    - name: Insert "Match User" configuration block in /etc/ssh/sshd_config
+      become: true 
+      tags:
+        - sshd_config
+      ansible.builtin.blockinfile:
+        path: /etc/ssh/sshd_config
+        append_newline: true
+        prepend_newline: true
+        block: |
+          Match User roachie
+          PasswordAuthentication yes
+
+    # This task restarts the sshd service to allow the new user to connect
+    - name: Restart service sshd
+      tags:
+        - restart_sshd
+      become: true 
+      ansible.builtin.service:
+        name: sshd.service 
+        state: restarted
+
+    # This task downloads the CRDB service template
+    - name: Downloading the CRDB service template
+      become: true
+      tags:
+        - create_service  
+      ansible.builtin.get_url:
+        url: "https://raw.githubusercontent.com/cockroachdb/docs/main/src/current/_includes/{{ crdb_curl_ver }}/prod-deployment/securecockroachdb.service"
+        dest: "{{ crdb_service }}"
+        mode: '0766'
+
+    # This task renames the CRDB service configuration file
+    - name: Renaming service config file using the shell module
+      become: true
+      tags:
+        - create_service  
+      ansible.builtin.shell: "mv {{ crdb_service }}/securecockroachdb.service {{ crdb_service }}/cockroachdb.service"
+    - name: Replacing the ExecStart line
+      become: true
+      tags:
+        - service_config
+      ansible.builtin.lineinfile:
+        path: "{{ crdb_service }}/cockroachdb.service"
+        regexp: '^ExecStart.*'
+        line: "ExecStart=/usr/local/bin/cockroach start --insecure --advertise-addr=HOST_IP:26257 --listen-addr=HOST_IP:26257 --join=HOST_IP:26257,HOST_IP:26257,HOST_IP:26257 --http-addr=HOST_IP:8080 --store=/home/cockroach/data/cr_data_0"
+        owner: root
+        group: root
+        mode: '0644'
+    
+    - name: Create a symbolic link
+      ansible.builtin.file:
+        src: /file/to/link/to
+        dest: /path/to/symlink
+        owner: foo
+        group: foo
+        state: link
+    
+    # This task removes working files
+    - name: Deleting CRDB installer content & directory
+      become: true 
+      tags:
+        - cleanup
+      ansible.builtin.file:
+        path: "/tmp/{{ crdb_version }}"
+        state: absent
+
+  #cockroach init --insecure --host=10.0.41.118
+  #
+  #CREATE EXTERNAL CONNECTION {source} AS 'postgresql://root@10.0.4.98:26257/defaultdb?application_name=%24+cockroach+sql&connect_timeout=15&sslmode=disable'

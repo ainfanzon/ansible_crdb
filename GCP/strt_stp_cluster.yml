@@ -1,0 +1,21 @@
+- name: Starting/Stoping CRDB Cluster Compute Engines
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars_files:
+    - vars.yml
+
+  tasks:
+
+  - name: Start CRSB Cluster Compute Engines
+    tags:
+      - StartCluster
+    include_tasks: "strt_ce.yml"
+    loop: "{{ gcp_zones }}"
+
+  - name: Stop CRSB Cluster Compute Engines
+    tags:
+      - StopCluster
+    include_tasks: "stp_ce.yml"
+    loop: "{{ gcp_zones }}"
