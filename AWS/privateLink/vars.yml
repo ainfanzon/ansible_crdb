@@ -1,0 +1,34 @@
+---
+
+aws_ec2_env_tag: aim-pl-cc-dedicated
+aws_ec2_name_tag: aim-pl-cc-dedicated
+aws_endpoint_name: aim-pl-endpoint
+aws_endpoint_type: Interface
+aws_igw: aim-pl-igw
+aws_image_id: ami-0423fca164888b941
+aws_instance_type: t2.medium
+aws_inst_count: 1
+aws_key_name: aim-pl-key
+aws_network_name: aim-pl-net
+aws_profile: 337380398238_CRLRevenue
+aws_region: us-west-2
+aws_route_table_cidr: 0.0.0.0/0
+aws_route_table_name: aim-pl-route-table
+aws_security_group: aim-pl-secgrp
+aws_security_group_cidr_ingress: 0.0.0.0/0
+aws_security_group_cidr_egress: 0.0.0.0/0
+aws_subnet_cidr_block: 10.14.0.0/24
+aws_vpc_cidr_block: 10.14.0.0/16
+aws_vpc_name: aim-pl-network
+aws_vpc_subnet_name: aim-pl-subnet
+aws_wrk_dir: /Users/ainfanzon/ansible/AWS/privateLink
+
+crdb_dwnload_url: https://binaries.cockroachdb.com/
+crdb_http_strt_port: 8080
+crdb_sql_strt_port: 26257
+crdb_service_name: com.amazonaws.vpce.us-west-2.vpce-svc-0a722a748718d1379
+crdb_uid: roachie
+crdb_pwd: roachfan
+crdb_grp: users
+crdb_home: /home/cockroach
+crdb_version: cockroach-v24.2.3.linux-amd64

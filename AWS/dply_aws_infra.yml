@@ -1,0 +1,139 @@
+---
+
+- name: Creatng the  AWS Infrastructure for CRDB
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars_files:
+    - vars.yml
+
+  tasks:
+
+    - name: Create a new EC2 key
+      amazon.aws.ec2_key:
+        name: "{{ aws_key_name }}"
+        profile: "{{ aws_profile }}"
+        region: "{{ aws_region }}"
+      register: ec2_key_result
+ 
+    - name: Save private key
+      ansible.builtin.copy:
+        content: "{{ ec2_key_result.key.private_key }}"
+        dest: "{{ aws_wrk_dir }}/{{ aws_key_name }}.pem"
+        mode: 0400
+      when: ec2_key_result.changed
+
+    - name: Creatng the "{{ aws_vpc_name }}" VPC
+      amazon.aws.ec2_vpc_net:
+        cidr_block: "{{ aws_vpc_cidr_block }}"
+        name: "{{ aws_vpc_name }}"
+        profile: "{{ aws_profile }}"
+        region: "{{ aws_region }}"
+        tags:
+          Name: "{{ aws_network_name }}"
+        state: present
+      register: vpc_reg
+
+    - name: Output aim_ansible_network ID
+      debug:
+        msg: "{{ vpc_reg }}"
+    
+    - name: Creating the "{{ aws_igw }}" internet gateway
+      amazon.aws.ec2_vpc_igw:
+        profile: "{{ aws_profile }}"
+        region: "{{ aws_region}}"
+        tags:
+          Name: "{{ aws_igw }}"
+        vpc_id: "{{ vpc_reg.vpc.id }}"
+        state: present
+      register: igw_reg
+
+    - name: Output Internet Gateway ID
+      debug:
+        msg: "Internet Gateway ID is {{ igw_reg.gateway_id }}"
+
+    - name: Creating the "{{ aws_vpc_subnet_name }}" subnet
+      amazon.aws.ec2_vpc_subnet:
+        cidr: "{{ aws_subnet_cidr_block }}"
+        profile: "{{ aws_profile }}"
+        region: "{{ aws_region }}"
+        state: present
+        tags:
+          Name: "{{ aws_vpc_subnet_name }}"
+        vpc_id: "{{ vpc_reg.vpc.id }}"
+      register: subnet_reg
+
+    - name: Output Subnet ID
+      debug:
+        msg: "Subnet ID is {{ subnet_reg.subnet.id }}"
+    
+    - name: Creating the VPC Public Subnet Route Table
+      amazon.aws.ec2_vpc_route_table:
+        profile: "{{ aws_profile }}"
+        vpc_id: "{{ vpc_reg.vpc.id }}"
+        region: "{{ aws_region }}"
+        tags:
+          Name: "{{ aws_route_table_name }}"
+        subnets: [ "{{ subnet_reg.subnet.id }}" ]
+        routes:
+          - dest: "{{ aws_route_table_cidr }}"
+            gateway_id: "{{ igw_reg.gateway_id }}"
+        state: present
+      register: pub_route_table_reg
+
+    - name: Output Subnet Route Table
+      debug:
+        msg: "Subnet ID is {{ pub_route_table_reg }}"
+    
+    - name: Creating the "{{ aws_security_group }}" security group
+      amazon.aws.ec2_security_group:
+        description: "This is the aim_ansible_secgrp security group for CockroachDB"
+        name: "{{ aws_security_group }}"
+        profile: "{{ aws_profile }}"
+        region: "{{ aws_region }}"
+        rules:
+          - proto: tcp
+            ports:
+              - 22
+              - 80
+              - 8000
+              - "{{ crdb_sql_strt_port }}-{{ crdb_sql_strt_port + aws_number_of_instances }}"
+              - "{{ crdb_http_strt_port }}-{{ crdb_http_strt_port + aws_number_of_instances }}"
+            cidr_ip: "{{ aws_security_group_cidr_ingress }}"
+        rules_egress:
+          - proto: all
+            cidr_ip: "{{ aws_security_group_cidr_egress }}"
+        vpc_id: "{{ vpc_reg.vpc.id }}"
+      register: sec_grp_reg
+
+    - name: Output Security Group ID
+      debug:
+        msg: "Security Group ID is {{ sec_grp_reg.group_id }}"
+
+    - name: Launch instance
+      amazon.aws.ec2_instance:
+        count: "{{ aws_inst_count }}" 
+        image_id: "{{ aws_image_id }}"
+        instance_type: "{{ aws_instance_type }}"
+        key_name: "{{ aws_key_name }}"
+        name: "{{ aws_ec2_name_tag }}"
+        profile: "{{ aws_profile }}"
+        region: "{{ aws_region }}"
+        security_group: "{{ sec_grp_reg.group_id }}"
+        subnet_id: "{{ subnet_reg.subnet.id }}"
+        network_interfaces:
+          - assign_public_ip: true
+        tags:
+          Environment: "{{ aws_ec2_env_tag }}"
+        volumes:
+          - device_name: /dev/sda1
+            ebs:
+              volume_size: 60
+              delete_on_termination: true
+        wait: yes
+      register: ec2
+
+    - name: Output Instance Details
+      debug:
+        msg: "Instance ID is {{ ec2.instances[0].instance_id }}"

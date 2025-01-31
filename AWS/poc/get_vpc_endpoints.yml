@@ -1,0 +1,36 @@
+---
+
+- name: Get VPC endpoints 
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars_files:
+    - vars.yml
+
+  tasks:
+
+    - name: Grab VPC details
+      amazon.aws.ec2_vpc_net_info:
+        profile: "{{ aws_profile }}"
+        region: "{{ aws_region }}"
+        filters:
+            "tag:Name": "{{ aws_vpc_name }}"
+      register: vpc
+
+    - name: Output aim_ansible_network ID
+      debug:
+        msg: "{{ vpc }}"
+        #msg: "{{ vpc.vpcs[0].id }}"
+
+
+    # Simple example of listing all support AWS services for VPC endpoints
+    - name: Get all endpoints for a given VPC 
+      amazon.aws.ec2_vpc_endpoint_info:
+        profile: "{{ aws_profile }}"
+        region: "{{ aws_region }}"
+      register: existing_endpoints
+
+    - name: Output Endpoints 
+      debug:
+        msg: "{{ existing_endpoints }}"

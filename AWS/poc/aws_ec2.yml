@@ -1,0 +1,9 @@
+---
+
+plugin: amazon.aws.aws_ec2
+regions:
+  - us-west-2
+profile: 337380398238_CRLRevenue
+filters:
+  tag:Name:
+    - aim-poc

@@ -1,0 +1,40 @@
+---
+
+- name: test aws
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars_files:
+    - vars.yml
+
+  tasks:
+
+    - name: Grab VPC details
+      register: vpc_info
+      amazon.aws.ec2_vpc_net_info:
+        filters:
+            "tag:Name": "{{ aws_vpc_name }}"
+        profile: "{{ aws_profile }}"
+        region: "{{ aws_region }}"
+
+    - name: Get subnets for the "{{ vpc_info.vpcs[0].id }}" VPC
+      register: subnet_info
+      amazon.aws.ec2_vpc_subnet_info:
+        profile: "{{ aws_profile }}"
+        region: "{{ aws_region }}"
+        filters:
+          vpc-id: "{{ vpc_info.vpcs[0].id }}"
+
+    - name: MyDebug
+      debug:
+        msg: "{{ subnet_info }}"
+
+    - name: Decommissioning the "{{ aws_vpc_subnet_name }}" subnet
+      with_items: "{{ subnet_info.subnets }}"
+      ec2_vpc_subnet:
+        cidr: "{{ item.cidr_block }}"
+        profile: "{{ aws_profile }}"
+        region: "{{ aws_region }}"
+        vpc_id: "{{ vpc_info.vpcs[0].vpc_id }}"
+        state: absent

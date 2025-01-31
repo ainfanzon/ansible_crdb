@@ -1,0 +1,36 @@
+---
+
+- name: test aws
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars_files:
+    - vars.yml
+
+  tasks:
+
+    - name: Gather information about a filtered list of Internet Gateways
+      amazon.aws.ec2_vpc_igw_info:
+        region: "{{ aws_region }}"
+        profile: "{{ aws_profile }}"
+        filters:
+          "tag:Name": "aim-poc-igw"
+      register: igw_reg
+
+    - name: Display subnets fact
+      debug:
+        msg: "{{ igw_reg }}"
+
+     # with_items: "{{ subnets }}"
+    
+    #- name: Set fact subnets
+    #  set_fact:
+    #     subnets: "{{ subnets|default([]) + [ {'subnet_id': item.id} ] }}"
+    #  with_items: "{{ subnet_reg.subnets }}"
+
+    #- name: Display subnets fact
+    #  debug:
+    #    msg: "{{ subnets[0].subnet_id }}"
+    #  with_items: "{{ subnets }}"
+

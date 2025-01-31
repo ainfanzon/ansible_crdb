@@ -1,0 +1,31 @@
+---
+
+- name: Creatng the  AWS Infrastructure for CRDB
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars_files:
+    - vars.yml
+
+  tasks:
+
+    - name: Creating the "{{ aws_endpoint_name }}" vpc endpoint 
+      amazon.aws.ec2_vpc_endpoint:
+        profile: "{{ aws_profile }}"
+        region: "{{ aws_region }}"
+        service: "{{ crdb_service_name }}"
+        state: present
+        tags:
+          Name: "{{ aws_endpoint_name }}"
+        vpc_id: vpc-054b1b2000b42c688
+        vpc_endpoint_type: "{{ aws_endpoint_type }}"
+        vpc_endpoint_subnets:
+          - subnet-00fc7380c4cd2d008
+        vpc_endpoint_security_groups: 
+          - sg-0953e643382abb194
+      register: vpc_endpoint_reg
+
+    - name: Output "{{ aws_endpoint_name }}" details
+      debug:
+        msg: "Endpoint in {{ vpc_endpoint_reg }}"

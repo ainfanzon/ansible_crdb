@@ -1,0 +1,43 @@
+---
+
+- name: test aws
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars_files:
+    - vars.yml
+
+  tasks:
+
+    - name: Grab VPC details
+      register: vpc_info
+      amazon.aws.ec2_vpc_net_info:
+        profile: "{{ aws_profile }}"
+        region: "{{ aws_region }}"
+        filters:
+            "tag:Name": "{{ aws_vpc_name }}"
+
+    - name: Get subnets for the "{{ vpc_info.vpcs[0].id }}" VPC
+      register: subnet_info
+      amazon.aws.ec2_vpc_subnet_info:
+        profile: "{{ aws_profile }}"
+        region: "{{ aws_region }}"
+        filters:
+          vpc-id: "{{ vpc_info.vpcs[0].id }}"
+    
+    - name: display subnet info
+      debug:
+        msg: "{{ subnet_info }}"
+
+    - name: Set fact subnets
+      with_items: "{{ subnet_info.subnets }}"
+      set_fact:
+         subnets: "{{ subnets|default([]) + [ {'subnet_id': item.id} ] }}"
+         cidr: "{{ cidr|default([]) + [ {'cidr_block': item.cidr_block} ] }}"
+
+    - name: Display subnets fact
+      with_items: "{{ subnets }}"
+      debug:
+        msg: "{{ cidr[0].cidr_block }}"
+

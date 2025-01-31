@@ -1,0 +1,39 @@
+---
+
+aws_az_lst: ['us-west-2a', 'us-west-2b', 'us-west-2c']
+aws_ec2_env_tag: aim-poc
+aws_ec2_name_tag: aim-poc
+aws_endpoint_name: aim-poc-endpoint
+aws_endpoint_type: Interface
+aws_igw: aim-poc-igw
+aws_image_id: ami-0423fca164888b941
+aws_instance_type: t2.medium
+aws_inst_count: 1
+aws_key_name: aim-poc-key
+aws_network_name: aim-poc-net
+aws_profile: 337380398238_CRLRevenue
+aws_region: us-west-2
+aws_route_table_cidr: 0.0.0.0/0
+aws_route_table_name: aim-poc-route-table
+aws_security_group: aim-poc-secgrp
+aws_security_group_cidr_ingress: 0.0.0.0/0
+aws_security_group_cidr_egress: 0.0.0.0/0
+aws_subnet_cidr_block: ['10.0.0.0/20', '10.0.16.0/20', '10.0.32.0/20'] 
+aws_vpc_cidr_block: 10.0.0.0/16
+aws_vpc_name: aim-poc-network
+aws_vpc_subnet_name: aim-poc-subnet
+aws_wrk_dir: /Users/ainfanzon/ansible/AWS/poc
+
+crdb_dirs: ['data', 'csv', 'scripts','sql']
+crdb_dwnload_url: https://binaries.cockroachdb.com/
+crdb_grp: users
+crdb_home: /home/cockroach
+crdb_http_strt_port: 8080
+crdb_pwd: roachfan
+crdb_sql_strt_port: 26257
+crdb_service_name: com.amazonaws.vpce.us-west-2.vpce-svc-0fd511fe2bd8fefe8
+crdb_service: /var/lib/cockroach
+crdb_uid: roachie
+crdb_version: cockroach-v24.3.3.linux-amd64
+#crdb_version: cockroach-v24.2.3.linux-amd64
+crdb_version: cockroach-v23.2.17.linux-arm64

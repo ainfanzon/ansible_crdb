@@ -1,0 +1,24 @@
+---
+
+- name: test aws
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars_files:
+    - vars.yml
+
+  tasks:
+
+    - name: Grab VPC details
+      amazon.aws.ec2_vpc_net_info:
+        profile: "{{ aws_profile }}"
+        region: "{{ aws_region }}"
+        filters:
+            "tag:Name": "{{ aws_vpc_name }}"
+      register: all_vpcs
+
+    - name: Output aim_ansible_network ID
+      debug:
+        msg: "{{ all_vpcs }}"
+

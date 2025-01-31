@@ -1,0 +1,186 @@
+---
+
+###
+# This Playbook creates all the necessary AWS infrastructure objects to deploy CRDB
+#
+
+- name: Creating the AWS Infrastructure for CRDB LDR deployment
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  # Import variables in the vars.yml file to customize the deployment 
+  vars_files:
+    - vars.yml
+
+  tasks:
+
+    # This generate a new key-pair 
+    - name: Creating a new EC2 key-pair "{{ aws_key_name }}"
+      register: key_info                              # Capture the result in a register variable
+      amazon.aws.ec2_key:
+        name: "{{ aws_key_name }}"
+        profile: "{{ aws_profile }}"                  # Authentication named AWS profile
+        region: "{{ aws_region }}"                    # AWS region to use
+ 
+    # Download the private key to a local directory
+    - name: Save private key "{{ aws_key_name }}"
+      ansible.builtin.copy:
+        content: "{{ key_info.key.private_key }}"     # Use the private key gernerated above
+        dest: "{{ aws_wrk_dir }}/{{ aws_key_name }}.pem"   # Save the key as a .pem file
+        mode: 0400                                         # Change file permissions
+      when: key_info.changed
+
+    # Create a new VPC using the values in the vars.yml file
+    - name: Creating the "{{ aws_vpc_name }}" VPC
+      register: vpc_info                              # Capture the result in a register variable
+      amazon.aws.ec2_vpc_net:
+        cidr_block: "{{ aws_vpc_cidr_block }}"
+        name: "{{ aws_vpc_name }}"
+        profile: "{{ aws_profile }}"
+        region: "{{ aws_region }}"
+        tags:
+          Name: "{{ aws_vpc_name }}"
+        state: present
+
+    # Display the details of the VPC in JSON format
+    - name: Display "{{ aws_vpc_name }}" details
+      debug:
+        msg: "{{ vpc_info }}"
+    
+    # Manage an AWS VPC Internet gateway. Create a new gateway
+    - name: Creating the "{{ aws_igw }}" internet gateway
+      register: igw_info                              # Capture creation details in the register variable
+      amazon.aws.ec2_vpc_igw:
+        profile: "{{ aws_profile }}"
+        region: "{{ aws_region}}"
+        tags:
+          Name: "{{ aws_igw }}"
+        vpc_id: "{{ vpc_info.vpc.id }}"               # Take the vpc_id from the vpc_info register variable
+        state: present
+
+    # Display the details of the getway 
+    - name: Display "{{ aws_igw }}" details
+      debug:
+        msg: "Internet Gateway ID is {{ igw_info }}"
+
+    # Manage subnets in AWS virtual private clouds.
+    - name: Creating the "{{ aws_vpc_subnet_name }}" subnet
+      register: subnet_info                           # Capture creation details in the register variable
+      amazon.aws.ec2_vpc_subnet:
+        az: "{{ item.az }}"
+        cidr: "{{ item.cidr }}"
+        profile: "{{ aws_profile }}"
+        region: "{{ aws_region }}"
+        state: present
+        tags:
+          Name: "{{ aws_vpc_subnet_name }}"
+        vpc_id: "{{ vpc_info.vpc.id }}"               # Take the vpc_id from the vpc_info register variable
+      with_items:                                     # iterate over availability zones and subnets
+        - { cidr: "{{ aws_subnet_cidr_block[0] }}", az: "{{ aws_az_lst[0] }}" }
+        - { cidr: "{{ aws_subnet_cidr_block[1] }}", az: "{{ aws_az_lst[1] }}" }
+        - { cidr: "{{ aws_subnet_cidr_block[2] }}", az: "{{ aws_az_lst[2] }}" } 
+
+    # Display the details of the subnet(s)
+    - name: Display "{{ aws_vpc_subnet_name }}" details
+      debug:
+        msg: "Subnet ID is {{ subnet_info }}"
+    
+    # Display the details of subnets in a VPC
+    - name: Get subnets for the " vpc_info.vpc.id  }}" VPC
+      register: subnet_info
+      amazon.aws.ec2_vpc_subnet_info:
+        profile: "{{ aws_profile }}"
+        region: "{{ aws_region }}"
+        filters:
+          vpc-id: "{{ vpc_info.vpc.id }}"
+
+    # Gather subnet facts to be used later in the playbook
+    - name: Set subnets fact
+      set_fact:
+         subnets: "{{ subnets|default([]) + [ {'subnet_id': item.id} ] }}"
+      with_items: "{{ subnet_info.subnets }}"
+
+    - name: Display subnet facts
+      debug:
+        msg: "{{ subnets }}"
+
+    # Manage route tables for AWS Virtual Private Clouds (VPCs).
+    - name: Creating the "{{ aws_route_table_name }}" VPC Public Subnet Route Table
+      register: public_rt_info                   # Capture creation details in the register variable
+      amazon.aws.ec2_vpc_route_table:
+        profile: "{{ aws_profile }}"
+        region: "{{ aws_region }}"
+        tags:
+          Name: "{{ aws_route_table_name }}"
+        subnets: 
+          - "{{ subnets[0].subnet_id }}"
+        routes:
+          - dest: "{{ aws_route_table_cidr }}"
+            gateway_id: "{{ igw_info.gateway_id }}"   # Take the subnet_id from the subnet_info register variable
+        state: present
+        vpc_id: "{{ vpc_info.vpc.id }}"               # Take the vpc_id from the vpc_info register variable
+      with_items: "{{ subnets }}"                     # add subnets to the routing table
+
+    # Display the details of the routing table
+    - name: Output "{{ aws_route_table_name }}" detailkks
+      debug:
+        msg: "Subnet ID is {{ public_rt_info }}"
+    
+    # Maintains EC2 security groups.
+    - name: Creating the "{{ aws_security_group }}" security group
+      register: sg_info                           # Capture creation details in the register variable
+      amazon.aws.ec2_security_group:
+        description: "This is the aim_ansible_secgrp security group for CockroachDB"
+        name: "{{ aws_security_group }}"
+        profile: "{{ aws_profile }}"
+        region: "{{ aws_region }}"
+        rules:
+          - proto: tcp
+            ports:
+              - 22
+              - 80
+              - 8000
+              - "{{ crdb_sql_strt_port }}"
+              - "{{ crdb_http_strt_port }}"
+            cidr_ip: "{{ aws_security_group_cidr_ingress }}"
+        rules_egress:
+          - proto: all
+            cidr_ip: "{{ aws_security_group_cidr_egress }}"
+        tags:
+          Name: "{{ aws_security_group }}"
+        vpc_id: "{{ vpc_info.vpc.id }}"               # vpc_id from the vpc_info variable
+
+    # Display the details of the security group
+    - name: Output "{{ aws_security_group }}" details
+      debug:
+        msg: "Security Group ID is {{ sg_info }}"
+
+    # Create and manage AWS EC2 instances.
+    - name: Launch ec2 instance(s)
+      register: ec2_info
+      amazon.aws.ec2_instance:
+        count: "{{ aws_inst_count }}" 
+        image_id: "{{ aws_image_id }}"
+        instance_type: "{{ aws_instance_type }}"
+        key_name: "{{ aws_key_name }}"
+        name: "{{ aws_ec2_name_tag }}"
+        profile: "{{ aws_profile }}"
+        region: "{{ aws_region }}"
+        security_group: "{{ sg_info.group_id }}"      # group_id from the sg_info variable
+        network_interfaces:
+          - assign_public_ip: true
+        tags:
+          Environment: "{{ aws_ec2_env_tag }}"
+        volumes:                                      # Add a 60GB device to the ec2 instance
+          - device_name: /dev/sda1
+            ebs:
+              volume_size: 60
+              delete_on_termination: true
+        vpc_subnet_id: "{{ item.subnet }}"                # subnet.id from the subnet_info variable
+        wait: yes
+      with_items: 
+        - { subnet: "{{ subnets[0].subnet_id }}" }
+        - { subnet: "{{ subnets[1].subnet_id }}" }
+        - { subnet: "{{ subnets[2].subnet_id }}" }
+

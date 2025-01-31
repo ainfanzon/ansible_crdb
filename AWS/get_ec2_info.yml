@@ -1,0 +1,25 @@
+---
+
+- name: test aws
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars_files:
+    - vars.yml
+
+  tasks:
+
+    - name: Grab VPC details
+      amazon.aws.ec2_instance_info:
+        profile: "{{ aws_profile }}"
+        region: "{{ aws_region }}"
+        filters:
+          "tag:Name": "aim-*"
+          instance-state-name: ["running"]
+      register: ec2_node_info
+
+    - name: Output ec2 instance info
+      debug:
+        msg: "{{ ec2_node_info.instances[0].private_ip_address, ec2_node_info.instances[0].public_ip_address }}"
+

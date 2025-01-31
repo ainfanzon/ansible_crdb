@@ -1,0 +1,44 @@
+---
+
+- name: Stop ec2 instances
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars_files:
+    - vars.yml
+
+  tasks:
+
+    - name: Get the insnce id of the EC@ instance with specific tag
+      amazon.aws.ec2_instance_info:
+        profile: "{{ aws_profile }}"
+        region: "{{ aws_region }}"
+        filters:
+          "tag:Name": "{{ aws_ec2_name_tag }}"
+          instance-state-name: ["running"]
+      register: ec2_node_info
+
+    - name: Output ec2 instance info
+      debug:
+        msg: "{{ ec2_node_info.instances[0].instance_id }}"
+
+    - name: Stop ec2 instance
+      amazon.aws.ec2_instance:
+        profile: "{{ aws_profile }}"
+        region: "{{ aws_region }}"
+        filters:
+          "tag:Name": "{{ aws_ec2_name_tag }}"
+        state: stopped
+      tags:
+        - stop
+
+    - name: Start ec2 instance
+      amazon.aws.ec2_instance:
+        profile: "{{ aws_profile }}"
+        region: "{{ aws_region }}"
+        filters:
+          "tag:Name": "{{ aws_ec2_name_tag }}"
+        state: started
+      tags:
+        - start

@@ -1,0 +1,143 @@
+---
+
+#################################################################
+# This playbook updates the OS and installs CRDB software 
+#
+
+- name: Cockroach database and other tools installation
+  hosts: all
+  gather_facts: true
+  remote_user: ec2-user           # use the uid in the ssh public key file
+
+  # Import variables in the vars.yml file to customize the deployment
+  vars_files:
+    - vars.yml
+
+  tasks:
+
+    # Upgrade OS packages
+    - name: Upgrading all packages
+      become: true 
+      dnf:
+        name: "*"
+        state: latest
+      tags:
+        - upgrade_packages
+  
+    # Install some additional packages 
+    - name: Installing additional packages
+      become: true 
+      tags:
+        - add_packages
+      dnf:
+        name:
+          - bzip2
+          - bzip2-devel
+          - curl
+          - gcc
+          - haproxy
+          - libpq-devel
+          - libffi-devel
+          - llvm
+          - ncurses-devel
+          - openssl-devel
+          - readline-devel
+          - telnet
+          - wget
+          - zlib-devel
+
+    # Download and decompress the CRDB tar file
+    - name: Downloading and Unarchiving the CRDB tar file 
+      tags:
+        - download_crdb
+      ansible.builtin.unarchive:
+        src: "{{ crdb_dwnload_url }}{{crdb_version}}.tgz"
+        dest: /tmp
+        remote_src: yes
+
+    # Create CRDB library directory
+    - name: Creating a  directory for the CRDB libraries
+      tags:
+        - create_lib_dir
+      become: true 
+      ansible.builtin.file:
+        path: /usr/local/lib/cockroach
+        state: directory
+        mode: '0755'
+
+    # Move library to /usr/local/lib  
+    - name: Copying cockroach libraries to /usr/local/lib
+      become: true 
+      tags:
+        - move_library
+      ansible.builtin.copy:
+        src: "/tmp/{{ crdb_version }}/lib/"
+        dest: /usr/local/lib/cockroach
+        remote_src: yes
+
+    # Copy CRDB binary to /usr/local/bin
+    - name: Coping cockroach binary to /usr/local/bin
+      become: true 
+      tags:
+        - move_binary
+      ansible.builtin.copy:
+        src: "/tmp/{{ crdb_version }}/cockroach"
+        dest: /usr/local/bin
+        mode: '0755'
+        remote_src: yes
+
+    # Create the CRDB user
+    - name: Creating the "{{ crdb_uid }}" user
+      become: true 
+      tags:
+        - create_user
+      ansible.builtin.user:
+        group: "{{ crdb_grp }}"
+        home: "{{ crdb_home }}"
+        name: "{{ crdb_uid }}"
+        password: "{{ crdb_pwd | password_hash('sha512') }}"
+        shell: /bin/bash
+        state: present
+
+    # Modify sshd to allow login
+    - name: Insert "Match User" configuration block in /etc/ssh/sshd_config
+      become: true 
+      tags:
+        - sshd_config
+      ansible.builtin.blockinfile:
+        path: /etc/ssh/sshd_config
+        append_newline: true
+        prepend_newline: true
+        block: |
+          Match User roachie
+          PasswordAuthentication yes
+
+    # Restart the service to allow the new user to connect
+    - name: Restart service sshd
+      become: true 
+      tags:
+        - restart_sshd
+      ansible.builtin.service:
+        name: sshd.service 
+        state: restarted
+
+    # Create the home directory for the CRDB user
+    - name: Creating the home directory for CRDB
+      become: true 
+      tags:
+        - crdb_home_dir
+      ansible.builtin.file:
+        group: "{{ crdb_grp }}"
+        mode: '0777'
+        owner: "{{ crdb_uid }}"
+        path: "{{ crdb_home }}"
+        state: directory
+
+    # Cleanup download and working files
+    - name: Deleting CRDB installer content & directory
+      become: true 
+      tags:
+        - cleanup
+      ansible.builtin.file:
+        path: "/tmp/{{ crdb_version }}"
+        state: absent

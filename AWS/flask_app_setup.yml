@@ -1,0 +1,51 @@
+---
+
+#################################################################
+# Setup the flask application
+
+- name: Cockroach database and other tools installation
+  hosts: all
+  gather_facts: true
+  remote_user: ec2-user           # use the uid in the ssh public key file
+
+  vars_files:
+    - vars.yml
+
+  tasks:
+
+    - name: Install specified python requirements
+      become: true 
+      ansible.builtin.pip:
+          requirements: //home/cockroach/app/requirements.txt
+      tags:
+        - pip_modules
+
+    - name: Initiate virtualenv
+      pip: virtualenv="{{ app_dir }}"
+           virtualenv_python="{{ app_py_ver }}"
+           requirements={{ app_dir }}/requirements.txt
+      tags:
+        - virtual_env
+
+    - name: Copying Flask app
+      become: true 
+      ansible.builtin.copy:
+        dest: "{{ crdb_home }}/app/"
+        group: "{{ crdb_grp }}"
+        owner: "{{ crdb_uid }}"
+        src: "{{ flask_dir }}/"                  # Can I change this to github repo?
+        mode: '0755'
+      tags:
+        - flask_app
+
+    - name: Copying all data files
+      become: true 
+      ansible.builtin.copy:
+        dest: "{{ crdb_home }}/dump"
+        group: "{{ crdb_grp }}"
+        owner: "{{ crdb_uid }}"
+        mode: '0755'
+        src: "{{ item }}"
+      with_fileglob: "{{ os_data_dir }}/*"
+      tags:
+        - move_data

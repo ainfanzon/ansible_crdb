@@ -1,0 +1,48 @@
+---
+
+aws_ami_id: ami-04e5276ebb8451442
+aws_ec2_env_tag: aim-iam-workshop
+aws_ec2_name_tag: aim-crdb
+aws_igw: aim_ansible_igw
+#aws_image_id: ami-00dfe539fd17bb1b8
+aws_image_id: ami-0423fca164888b941
+#aws_instance_type: m5.2xlarge
+aws_instance_type: t2.medium
+aws_inst_count: 1
+aws_network_name: us-west-2
+aws_profile: 337380398238_CRLRevenue
+aws_region: us-west-2
+aws_route_table_cidr: 0.0.0.0/0
+aws_route_table_name: aim_route_table
+aws_security_group: aim_ansible_secgrp
+aws_security_group_cidr_ingress: 0.0.0.0/0
+aws_security_group_cidr_egress: 0.0.0.0/0
+aws_subnet_cidr_block: 10.14.0.0/24
+aws_vpc_cidr_block: 10.14.0.0/16
+aws_vpc_name: aim_ansible_network
+aws_vpc_subnet_name: aim_ansible_subnet
+aws_number_of_instances: 20
+aws_wrk_dir: /Users/ainfanzon/ansible/AWS
+aws_key_name: aim_key
+
+crdb_dirs: ['data', 'dump', 'scripts','sql', 'app', 'haproxy']
+crdb_dwnload_url: https://binaries.cockroachdb.com/
+crdb_grp: users
+crdb_http_strt_port: 8080
+crdb_sql_strt_port: 26257
+crdb_uid: roachie
+crdb_pwd: roachfan
+crdb_home: /home/cockroach
+crdb_version: cockroach-v24.2.3.linux-amd64
+
+app_dir: /home/cockroach/app
+app_py_ver: 3.12
+flask_port: 8000
+flask_dir: /Users/ainfanzon/apps/iam
+sql_scrpt_dir: /Users/ainfanzon/ansible/sql_scrpts
+os_scrpt_dir: /Users/ainfanzon/ansible/scripts
+os_haproxy_dir: /Users/ainfanzon/ansible/haproxy
+os_data_dir: /Users/ainfanzon/ansible/wrkshp_data
+
+
+
